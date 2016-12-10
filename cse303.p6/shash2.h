@@ -1,10 +1,16 @@
 #pragma once
-
+#include <mutex>
+#include <iostream>
+using namespace std;
 /// TODO: complete this implementation of a thread-safe (concurrent) hash
 ///       table of integers, implemented as an array of linked lists.  In
 ///       this implementation, each list should have a "sentinel" node that
-///       contains the lock, so we can't just reuse the clist implementation
-class shash {
+///       contains the lock, so we can't just reuse the clist implementation.
+///       In addition, the API now allows for multiple keys on each
+///       operation.
+// runs but slower 
+class shash2 {
+
   struct node{
     int value;
     node * next;
@@ -15,10 +21,11 @@ class shash {
     std::mutex mtx;
   };
 
-  int num;
+  int n;
   sentinel * bucket;
     
 public:
+  
   bool myinsert(int key,node * head) {
     if(!head){  // if head NULL insert into head
       head = new node();
@@ -84,26 +91,60 @@ public:
     }
     return false;
   }
-    /// insert *key* into the appropriate linked list if it doesn't already
-    /// exist; return true if the key was added successfully.
-    bool insert(int key) {
-      bucket[key%num].mtx.lock();
-      bool res = myinsert(key,bucket[key%num].head);
-      bucket[key%num].mtx.unlock();
-      return res;
+
+  int hash(int key){
+    return key%n;
+  }
+    /// insert /num/ values from /keys/ array into the hash, and return the
+    /// success/failure of each insert in /results/ array.
+    void insert(int* keys, bool* results, int num) {
+      for(int i =0 ;i<n;i++){
+	bucket[i].mtx.lock();
+      }
+      for(int i =0; i< num; i++){
+       	int ha = hash(keys[i]);
+	//bucket[ha].mtx.lock();
+	results[i]=myinsert(keys[i],bucket[ha].head);
+	//bucket[ha].mtx.lock();
+      }
+      for(int i=0; i<n ;i++){
+	bucket[i].mtx.unlock();
+      }
     }
-    /// remove *key* from the appropriate list if it was present; return true
-    /// if the key was removed successfully.
-    bool remove(int key) {
-      
-      return false;
+    /// remove *key* from the list if it was present; return true if the key
+    /// was removed successfully.
+    void remove(int* keys, bool* results, int num) {
+      for(int i=0; i< n ; i++){
+	bucket[i].mtx.lock();
+      }
+      for(int i=0; i< num; i++){
+	int ha = hash(keys[i]);
+	//bucket[ha].mtx.lock();
+	results[i] = myremove(keys[i],bucket[ha].head);
+	//bucket[ha].mtx.lock();
+      }
+      for(int i=0; i<n ; i++){
+	bucket[i].mtx.unlock();
+      }
     }
-    /// return true if *key* is present in the appropriate list, false
-    /// otherwise
-    bool lookup(int key) { return false; }
+    /// return true if *key* is present in the list, false otherwise
+    void lookup(int* keys, bool* results, int num) {
+      for(int i =0;i<n;i++){
+	bucket[i].mtx.lock();
+      }
+      for(int i=0; i<num; i++){
+	int ha = hash(keys[i]);
+	//bucket[ha].mtx.lock();
+	results[i] = mylookup(keys[i],bucket[ha].head);
+	//bucket[ha].mtx.lock();
+      }
+      for(int i =0;i<n;i++){
+	bucket[i].mtx.unlock();
+      }
+    }
     /// constructor code goes here
-    shash(unsigned _buckets) {
-      num = _buckets;
-      bucket = new sentinel[num];
+    shash2(unsigned _buckets) {
+      n = _buckets;
+      bucket = new sentinel[n];
     }
 };
